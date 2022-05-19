@@ -3,11 +3,21 @@ import socket
 import ssl
 
 def request(url):
-    scheme, url = url.split("://",1)
-    assert scheme in ["http", "https"]
-    
 
+    headers = {}
+    body=""
+
+    scheme, url = url.split("://",1)
+    assert scheme in ["http", "https", "file"]
+    
     host, path = url.split("/",1)
+    
+    if scheme == "file":
+        path = path.replace("%20"," ")
+        with open(path, encoding="utf8") as f:
+            body=f.read()
+        return headers, body
+
     path ="/"+path
 
 
@@ -41,7 +51,7 @@ def request(url):
     version, status, explanation = statusline.split(" ",2)
     assert status == "200", "{} : {}".format(status, explanation)
 
-    headers = {}
+    
     while True:
         line = response.readline()
         if line == "\r\n":
@@ -79,13 +89,16 @@ def show(body):
         elif not in_angle:
             print(c, end="")
 
-def load(url):
+def load(url="file:///D:/System/Pictures/Google.html"):
     headers, body = request(url)
     show(body)
 
 if __name__ == "__main__":
     import sys
-    load(sys.argv[1])
+    if len(sys.argv) > 1:
+        load(sys.argv[1])
+    else:
+        load()
 
     
 
