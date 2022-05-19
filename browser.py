@@ -1,3 +1,4 @@
+from importlib.metadata import metadata
 import re
 import socket
 import ssl
@@ -6,10 +7,23 @@ def request(url):
 
     headers = {}
     body=""
+    scheme, url = url.split(":",1)
+    assert scheme in ["http", "https", "file","data"]
 
-    scheme, url = url.split("://",1)
-    assert scheme in ["http", "https", "file"]
-    
+    if scheme == "data":
+        metadata, body = url.split(",",1)
+        metadata = metadata.split(";",1)
+        headers["content-type"] = metadata[0].strip()
+        if(len(metadata)>1):
+            attributes = metadata[1].split(";")
+            for attribute in attributes:
+                if "=" in attribute:
+                    header, value = attribute.split(";",1)
+                    headers[header.lower()] = value.strip()
+        return headers, body
+
+
+    url = url[len("//"):]
     host, path = url.split("/",1)
     
     if scheme == "file":
