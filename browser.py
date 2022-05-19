@@ -1,4 +1,5 @@
 from importlib.metadata import metadata
+from math import fabs
 import re
 import socket
 import ssl
@@ -95,18 +96,35 @@ class RequestObj:
 
 def show(body):
     in_angle = False
+    close_tag = False
+    current_tag = ""
+    inBody = False
     for c in body:
         if c == "<":
             in_angle = True
         elif c == ">":
+            if close_tag:
+                if current_tag == "body":
+                    inBody = False
+            else:
+                if current_tag == "body":
+                    inBody = True
+            close_tag = False
             in_angle = False
-        elif not in_angle:
+            current_tag = ""
+        elif in_angle:
+            if c == "/":
+                close_tag = True
+            else:
+                current_tag += c
+        elif inBody:
             print(c, end="")
+        
 
 def load(url="file:///D:/System/Pictures/Google.html"):
     headers, body = request(url)
     show(body)
-
+ 
 if __name__ == "__main__":
     import sys
     if len(sys.argv) > 1:
