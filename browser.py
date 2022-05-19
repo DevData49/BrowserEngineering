@@ -1,3 +1,4 @@
+import re
 import socket
 import ssl
 
@@ -29,8 +30,10 @@ def request(url):
         s = ctx.wrap_socket(s, server_hostname=host)
 
     s.connect((host,port))
-    s.send("GET {} HTTP/1.0\r\n".format(path).encode("utf8")+
-           "Host: {}\r\n\r\n".format(host).encode("utf8"))
+
+    req = RequestObj(path, "HTTP/1.1").add("Host", host).add("Connection", "close").add("User-Agent","None").wrap()
+    print(req)
+    s.send(req)
 
     response = s.makefile("r", encoding="utf8", newline="\r\n")
 
@@ -53,6 +56,18 @@ def request(url):
     s.close()
 
     return headers, body
+
+class RequestObj: 
+    def __init__(self, path, httpversion="HTTP/1.0") -> None:
+        self.request = "GET {} {}\r\n".format(path, httpversion).encode("utf8")
+    
+    def add(self,header, value, close=False):
+        self.request += ("{}: {}\r\n".format(header, value).encode("utf8"))
+        return self
+
+    def wrap(self):
+        return self.request + "\r\n".encode("utf8")
+
 
 def show(body):
     in_angle = False
