@@ -1,21 +1,34 @@
-from email import header
-from ensurepip import version
-from heapq import heapify
 import socket
-from urllib import response
+import ssl
 
 def request(url):
-    assert(url.startswith("http://"))
-    url = url[len("http://"):]
+    scheme, url = url.split("://",1)
+    assert scheme in ["http", "https"]
+    
+
     host, path = url.split("/",1)
     path ="/"+path
+
+
+    if ":"in host:
+        host, port = host.split(":",1)
+        port = int(port)
+    else:
+        port = 80 if scheme == "http" else 443
+    
 
     s= socket.socket(
         family=socket.AF_INET,
         type=socket.SOCK_STREAM,
         proto=socket.IPPROTO_TCP
     )
-    s.connect((host,80))
+    
+    
+    if scheme == "https":
+        ctx = ssl.create_default_context()
+        s = ctx.wrap_socket(s, server_hostname=host)
+
+    s.connect((host,port))
     s.send("GET {} HTTP/1.0\r\n".format(path).encode("utf8")+
            "Host: {}\r\n\r\n".format(host).encode("utf8"))
 
