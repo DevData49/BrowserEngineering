@@ -8,8 +8,10 @@ def request(url):
 
     headers = {}
     body=""
+    viewsource =False
+
     scheme, url = url.split(":",1)
-    assert scheme in ["http", "https", "file","data"]
+    assert scheme in ["http", "https", "file","data", "view-source"]
 
     if scheme == "data":
         metadata, body = url.split(",",1)
@@ -21,8 +23,12 @@ def request(url):
                 if "=" in attribute:
                     header, value = attribute.split(";",1)
                     headers[header.lower()] = value.strip()
-        return headers, body
+        return headers, "<body>"+body+"</body>"
 
+    if(scheme == "view-source"):
+        viewsource = True
+        scheme, url = url.split(":",1)
+        assert scheme in ["http","https"]
 
     url = url[len("//"):]
     host, path = url.split("/",1)
@@ -79,6 +85,8 @@ def request(url):
 
     body = response.read()
     s.close()
+    if viewsource:
+        body= transformToViewSource(body)
 
     return headers, body
 
@@ -93,33 +101,53 @@ class RequestObj:
     def wrap(self):
         return self.request + "\r\n".encode("utf8")
 
+def transformToViewSource(body):
+    body.replace("<", "&lt;")
+    body.replace(">", "&gt;")
+    return "<body>"+body+"</body>"
 
 def show(body):
+    text =""
     in_angle = False
-    close_tag = False
+    in_body = False
     current_tag = ""
-    inBody = False
+    entityPos = 0
     for c in body:
         if c == "<":
             in_angle = True
         elif c == ">":
-            if close_tag:
-                if current_tag == "body":
-                    inBody = False
-            else:
-                if current_tag == "body":
-                    inBody = True
-            close_tag = False
+            if in_body and current_tag == "/body":
+                in_body = False
+            elif current_tag == "body":
+                in_body = True
             in_angle = False
             current_tag = ""
         elif in_angle:
-            if c == "/":
-                close_tag = True
-            else:
-                current_tag += c
-        elif inBody:
-            print(c, end="")
-        
+            current_tag += c
+        elif in_body:
+            text += c
+            if c == "&":
+                entityPos = len(text)-1
+            elif c == ";" and not(entityPos == -1):
+                text, entityPos = handleEntity(text, entityPos)
+            
+    print(text)
+
+def handleEntity(text, entityPos):
+    possibleEntity = text[entityPos:]
+    entityList ={
+        "&gt;" : ">",
+        "&lt;" : "<",
+        "&amp;": "&",
+        "&copy;": "©",
+        "&ndash;": "-"
+    }
+    entity = entityList.get(possibleEntity, possibleEntity)
+    text = text[:entityPos] + entity
+    if not (entity == "&"):
+        entityPos = -1 
+    return text, entityPos
+
 
 def load(url="file:///D:/System/Pictures/Google.html"):
     headers, body = request(url)
